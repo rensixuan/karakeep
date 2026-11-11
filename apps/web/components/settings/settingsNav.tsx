@@ -64,15 +64,11 @@ export function settingsNavGroups(t: TFunction): SectionNavGroup[] {
           icon: <BookOpen className="size-4" />,
           path: "/settings/reading",
         },
-        ...(serverConfig.inference.isConfigured
-          ? [
-              {
-                name: t("settings.ai.ai_settings"),
-                icon: <Sparkles className="size-4" />,
-                path: "/settings/ai",
-              },
-            ]
-          : []),
+        {
+          name: t("settings.ai.ai_settings"),
+          icon: <Sparkles className="size-4" />,
+          path: "/settings/ai",
+        },
       ],
     },
     {

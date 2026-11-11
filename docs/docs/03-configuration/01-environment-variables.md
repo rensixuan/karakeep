@@ -1,5 +1,13 @@
 # Configuration
 
+## Reader translation encryption
+
+`TRANSLATION_ENCRYPTION_KEY` is an optional base64-encoded random 32-byte server
+secret. It is required to save personal OpenAI keys and start reader translations.
+Missing or invalid values disable new translation calls without affecting normal
+reading. Persist it across restarts and back it up separately from SQLite.
+See [Reader translation](./03-reader-translation.md) for setup and key recovery.
+
 The app is mainly configured by environment variables. All the used environment variables are listed in [packages/shared/config.ts](https://github.com/karakeep-app/karakeep/blob/main/packages/shared/config.ts). The most important ones are:
 
 | Name                                   | Required                              | Default         | Description                                                                                                                                                                                                                                                                                                                                      |

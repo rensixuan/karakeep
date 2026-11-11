@@ -9,6 +9,8 @@ node_modules
 
 # testing
 coverage
+/.playwright-cli/
+/output/playwright/
 
 # next.js
 .next/

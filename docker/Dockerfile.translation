@@ -1,0 +1,40 @@
+# Reuse the deployed, pinned Node 24/media-tool runtime. Build every application
+# component from this source tree; no old web/worker code is kept in the image.
+ARG RUNTIME_IMAGE=ghcr.io/karakeep-app/karakeep:0.34.1@sha256:69ae5315c618b7c14c1af3e34c6e211acdb231793af424ecd1cab0b70691d987
+FROM ${RUNTIME_IMAGE} AS build
+USER root
+WORKDIR /build
+ENV NODE_ENV=development NEXT_TELEMETRY_DISABLED=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV NODE_OPTIONS=--max-old-space-size=2048
+RUN npm install -g corepack@0.36.0 && corepack enable pnpm
+RUN apt-get update && apt-get install --no-install-recommends -y make g++ python3 \
+    && rm -rf /var/lib/apt/lists/*
+COPY . .
+RUN pnpm install --frozen-lockfile --prod=false
+ENV pnpm_config_verify_deps_before_run=error
+RUN cd packages/db && pnpm exec rolldown migrate.ts --platform node --format cjs \
+    --external better-sqlite3 --file /new-db-migrations/index.js \
+    && cp -R drizzle /new-db-migrations \
+    && sqlite_dir=$(node -p "require('path').dirname(require.resolve('better-sqlite3/package.json'))") \
+    && mkdir -p /new-db-migrations/node_modules/better-sqlite3 \
+    && cp -R "$sqlite_dir/package.json" "$sqlite_dir/lib" "$sqlite_dir/prebuilds" \
+       /new-db-migrations/node_modules/better-sqlite3/
+RUN cd apps/workers && pnpm build
+RUN CI=true pnpm deploy --node-linker=isolated --legacy --filter @karakeep/workers --prod /prod/workers
+RUN cd apps/web && NODE_ENV=production pnpm exec next build --experimental-build-mode compile
+
+FROM ${RUNTIME_IMAGE} AS runtime
+USER root
+ARG SOURCE_REVISION
+ARG SOURCE_SHA256
+LABEL org.opencontainers.image.source="https://github.com/rensixuan/karakeep" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}" \
+      work.duan-gateway.source-sha256="${SOURCE_SHA256}"
+ENV SERVER_VERSION=custom-reader-translation
+RUN rm -rf /app /db_migrations && mkdir -p /app
+WORKDIR /app
+COPY --from=build --chown=node:node /build/apps/web/.next/standalone ./
+COPY --from=build /build/apps/web/public ./apps/web/public
+COPY --from=build --chown=node:node /build/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /new-db-migrations /db_migrations
+COPY --from=build /prod/workers /app/apps/workers

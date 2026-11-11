@@ -1,6 +1,7 @@
 import React, {
   forwardRef,
   useEffect,
+  useLayoutEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -20,6 +21,18 @@ import {
 } from "@karakeep/shared/utils/highlight-anchoring";
 
 import { HIGHLIGHT_COLOR_MAP } from "./highlights";
+import {
+  getSourceRangeText,
+  getSourceText,
+  isTranslationNode,
+  sourceTextWalker,
+} from "@karakeep/shared/utils/reader-source-dom";
+import { findScrollableParent } from "@karakeep/shared/utils/reading-progress-dom";
+import {
+  TRANSLATION_ATTRIBUTE,
+  TRANSLATION_SEGMENT_ATTRIBUTE,
+} from "@karakeep/shared/types/translations";
+import type { TranslationTexts } from "@karakeep/shared/types/translations";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent } from "./ui/popover";
 import { Textarea } from "./ui/textarea";
@@ -334,6 +347,8 @@ export interface Highlight {
 }
 
 interface HTMLHighlighterProps {
+  translations?: TranslationTexts;
+  showTranslations?: boolean;
   htmlContent: string;
   style?: React.CSSProperties;
   className?: string;
@@ -363,6 +378,8 @@ const BookmarkHTMLHighlighter = forwardRef<
     onDeleteHighlight,
     dockFormAt,
     dockLabels,
+    translations,
+    showTranslations = false,
   },
   ref,
 ) {
@@ -414,11 +431,8 @@ const BookmarkHTMLHighlighter = forwardRef<
     // Rebuilding the spans disturbs the live selection. The popover needs it on
     // every render to clear its preview, but the dock has no preview, so it only
     // rebuilds when something it would draw has changed.
-    if (dockFormAt !== undefined) {
-      const key = JSON.stringify([
-        htmlContent.length,
-        highlights.map((h) => [h.id, h.color, h.startOffset, h.endOffset]),
-      ]);
+    {
+      const key = JSON.stringify([htmlContent, highlights, pendingHighlight]);
       if (appliedHighlightsKey.current === key) {
         return;
       }
@@ -450,6 +464,49 @@ const BookmarkHTMLHighlighter = forwardRef<
       applyHighlightByOffset({ ...highlight, ...range });
     });
   });
+
+  useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+    const scrollParent = findScrollableParent(content);
+    const isWindow = scrollParent === document.documentElement;
+    const viewportTop = isWindow ? 0 : scrollParent.getBoundingClientRect().top;
+    const blocks = Array.from(
+      content.querySelectorAll<HTMLElement>(
+        `[${TRANSLATION_SEGMENT_ATTRIBUTE}]`,
+      ),
+    );
+    const anchor = blocks.find(
+      (block) => block.getBoundingClientRect().bottom >= viewportTop,
+    );
+    const previousTop = anchor?.getBoundingClientRect().top;
+    content
+      .querySelectorAll(`[${TRANSLATION_ATTRIBUTE}]`)
+      .forEach((node) => node.remove());
+    if (showTranslations && translations) {
+      for (const block of blocks) {
+        const text = (block.getAttribute(TRANSLATION_SEGMENT_ATTRIBUTE) ?? "")
+          .split(" ")
+          .map((id) => translations[id] ?? "")
+          .join("");
+        if (!text) continue;
+        const translated = document.createElement("span");
+        translated.setAttribute(TRANSLATION_ATTRIBUTE, "");
+        translated.lang = "zh-CN";
+        translated.className =
+          "mt-2 mb-3 block border-l-2 border-muted-foreground/30 pl-3 font-normal text-foreground/80";
+        translated.textContent = text;
+        block.append(translated);
+      }
+    }
+    if (anchor && previousTop !== undefined) {
+      const delta = anchor.getBoundingClientRect().top - previousTop;
+      if (delta) {
+        if (isWindow) window.scrollBy({ top: delta, behavior: "instant" });
+        else scrollParent.scrollTop += delta;
+      }
+    }
+  }, [htmlContent, translations, showTranslations]);
 
   // Re-apply the selection when the pending range changes
   useEffect(() => {
@@ -623,7 +680,7 @@ const BookmarkHTMLHighlighter = forwardRef<
       !content.contains(range.startContainer) ||
       !content.contains(range.endContainer)
     ) {
-      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+      const walker = sourceTextWalker(content);
       const first = walker.nextNode() as Text | null;
       let last = first;
       while (walker.nextNode()) {
@@ -718,17 +775,7 @@ const BookmarkHTMLHighlighter = forwardRef<
   };
 
   const getFullText = (): string => {
-    if (!contentRef.current) return "";
-    let text = "";
-    const walker = document.createTreeWalker(
-      contentRef.current,
-      NodeFilter.SHOW_TEXT,
-      null,
-    );
-    while (walker.nextNode()) {
-      text += walker.currentNode.textContent ?? "";
-    }
-    return text;
+    return contentRef.current ? getSourceText(contentRef.current) : "";
   };
 
   /**
@@ -745,14 +792,19 @@ const BookmarkHTMLHighlighter = forwardRef<
     const before = document.createRange();
     before.selectNodeContents(content);
     before.setEnd(node, offset);
-    return before.toString().length;
+    return getSourceRangeText(before).length;
   };
 
   const buildHighlightFromRange = (
     range: Range,
     color: ZHighlightColor,
   ): Highlight | null => {
-    if (!contentRef.current) return null;
+    if (
+      !contentRef.current ||
+      isTranslationNode(range.startContainer) ||
+      isTranslationNode(range.endContainer)
+    )
+      return null;
 
     const startOffset = getTextOffset(range.startContainer, range.startOffset);
     const endOffset = getTextOffset(range.endContainer, range.endOffset);
@@ -772,7 +824,7 @@ const BookmarkHTMLHighlighter = forwardRef<
       startOffset,
       endOffset,
       color,
-      text: range.toString(),
+      text: getSourceRangeText(range),
       prefix,
       suffix,
     };
@@ -782,11 +834,7 @@ const BookmarkHTMLHighlighter = forwardRef<
     if (!contentRef.current) return;
 
     let currentOffset = 0;
-    const walker = document.createTreeWalker(
-      contentRef.current,
-      NodeFilter.SHOW_TEXT,
-      null,
-    );
+    const walker = sourceTextWalker(contentRef.current);
 
     const ranges: { node: Text; start: number; end: number }[] = [];
 
@@ -840,9 +888,7 @@ const BookmarkHTMLHighlighter = forwardRef<
       <div
         role="presentation"
         ref={contentRef}
-        dangerouslySetInnerHTML={
-          dockFormAt !== undefined ? stableHtml : { __html: htmlContent }
-        }
+        dangerouslySetInnerHTML={stableHtml}
         onPointerDown={dockFormAt === undefined ? handlePointerDown : undefined}
         onPointerUp={dockFormAt !== undefined ? handlePointerUp : undefined}
         className={cn(

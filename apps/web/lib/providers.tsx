@@ -21,6 +21,7 @@ import {
 } from "@karakeep/shared-react/trpc";
 
 import CustomI18nextProvider from "./i18n/provider";
+import { shouldLogTRPCOperation } from "./trpc-logging";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -74,8 +75,7 @@ export default function Providers({
       links: [
         loggerLink({
           enabled: (op) =>
-            process.env.NODE_ENV === "development" ||
-            (op.direction === "down" && op.result instanceof Error),
+            shouldLogTRPCOperation(op, process.env.NODE_ENV === "development"),
         }),
         httpBatchLink({
           // TODO: Change this to be a full URL exposed as a client side setting

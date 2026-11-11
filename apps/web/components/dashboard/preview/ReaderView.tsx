@@ -23,8 +23,10 @@ import { useDeleteHighlightWithUndo } from "../highlights/useDeleteHighlightWith
 import BookmarkLoadError, { retryBookmarkQuery } from "./BookmarkLoadError";
 import { flashHighlight } from "./highlights";
 import ReadingProgressBanner from "./ReadingProgressBanner";
+import ReaderTranslationControls from "./ReaderTranslationControls";
+import { useReaderTranslation } from "./useReaderTranslation";
 
-export default function ReaderView({
+function ReaderViewContent({
   bookmarkId,
   className,
   style,
@@ -68,6 +70,12 @@ export default function ReaderView({
             : null,
       },
     ),
+  );
+
+  const translation = useReaderTranslation(
+    bookmarkId,
+    !readOnly && !!cachedContent,
+    cachedContent,
   );
 
   const {
@@ -114,7 +122,7 @@ export default function ReaderView({
       flashHighlight(focusHighlightId);
     });
     return () => cancelAnimationFrame(frame);
-  }, [focusHighlightId, highlights, cachedContent]);
+  }, [focusHighlightId, highlights, cachedContent, translation.article?.html]);
 
   // They came for one passage, so don't offer to take them elsewhere (as on mobile).
   useEffect(() => {
@@ -214,10 +222,30 @@ export default function ReaderView({
             onDismiss={onDismiss}
           />
         )}
+        {!readOnly && (
+          <div className={className} style={style}>
+            <ReaderTranslationControls state={translation} />
+          </div>
+        )}
+        {translation.visible && translation.article?.titleIds && (
+          <div
+            className={cn("mb-4", className)}
+            style={style}
+            data-reader-translation=""
+            lang="zh-CN"
+          >
+            {translation.article.titleIds
+              .split(" ")
+              .map((id) => translation.article?.translations[id] ?? "")
+              .join("")}
+          </div>
+        )}
         <BookmarkHTMLHighlighter
           className={className}
           style={style}
-          htmlContent={cachedContent || ""}
+          htmlContent={translation.article?.html ?? cachedContent ?? ""}
+          translations={translation.article?.translations}
+          showTranslations={translation.visible}
           highlights={highlights?.highlights ?? []}
           readOnly={readOnly}
           onDeleteHighlight={(h) =>
@@ -249,4 +277,10 @@ export default function ReaderView({
     );
   }
   return content;
+}
+
+export default function ReaderView(
+  props: React.ComponentProps<typeof ReaderViewContent>,
+) {
+  return <ReaderViewContent key={props.bookmarkId} {...props} />;
 }

@@ -31,3 +31,5 @@ snapshots
 .next/
 out/
 .claude/worktrees
+.playwright-cli
+output

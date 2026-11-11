@@ -1250,5 +1250,43 @@
     "deselect_all": "取消全选",
     "show_help": "显示键盘快捷键",
     "focus_search_alt": "聚焦搜索"
+  },
+  "reader_translation": {
+    "settings_title": "阅读翻译",
+    "settings_description": "使用你自己的 OpenAI 账号，将收藏文章翻译为简体中文。密钥在服务器加密保存。连接测试和翻译会使用你的 API 额度。",
+    "model": "模型",
+    "save": "保存",
+    "test": "测试已保存的连接",
+    "delete_key": "删除密钥",
+    "saved": "翻译设置已保存。",
+    "connected": "连接成功。",
+    "deleted": "API 密钥已删除。",
+    "key_saved": "已保存密钥；填写新密钥可替换",
+    "key_placeholder": "填写你的 OpenAI API Key",
+    "key_saved_help": "留空则保留已有密钥，已保存的密钥无法查看。",
+    "key_help": "密钥会安全提交到本站服务器，并加密保存。",
+    "translate": "翻译为中文",
+    "pause": "暂停",
+    "continue": "继续翻译",
+    "hide": "隐藏译文",
+    "show": "显示译文",
+    "restart": "重新翻译",
+    "progress": "已完成 {{done}} / {{total}} 段",
+    "configure": "配置翻译",
+    "errors": {
+      "TRANSLATION_ENCRYPTION_UNAVAILABLE": "管理员配置服务器加密密钥后，才能保存 API Key 和发起翻译。",
+      "TRANSLATION_KEY_UNREADABLE": "无法解密已保存的密钥，请检查服务器加密配置，或重新保存 API Key。",
+      "TRANSLATION_HTTPS_REQUIRED": "请通过 HTTPS 页面保存 API Key。",
+      "TRANSLATION_KEY_REQUIRED": "请先在 AI 设置中填写你的 OpenAI API Key。",
+      "TRANSLATION_INVALID_KEY": "API Key 无效或没有权限，请在 AI 设置中更新。",
+      "TRANSLATION_RATE_LIMITED": "OpenAI 请求受限或额度不足，请检查账号并稍后重试。",
+      "TRANSLATION_MODEL_UNAVAILABLE": "所选模型不可用或不支持当前翻译请求，请检查 AI 设置。",
+      "TRANSLATION_TIMEOUT": "翻译超时，已完成的译文已保存，可以重试。",
+      "TRANSLATION_REFUSED": "OpenAI 未能翻译这部分文章。",
+      "TRANSLATION_INCOMPLETE": "返回的译文不完整，请重试这一批内容。",
+      "TRANSLATION_NO_CONTENT": "这篇文章尚无可翻译的 Reader 正文。",
+      "TRANSLATION_STALE": "文章或翻译设置已变化，点击继续加载当前版本。",
+      "TRANSLATION_FAILED": "翻译暂时失败，已保存的进度不会丢失，请重试。"
+    }
   }
 }

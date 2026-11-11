@@ -1,4 +1,9 @@
 /// <reference lib="dom" />
+import {
+  getSourceText,
+  isTranslationNode,
+  sourceTextWalker,
+} from "./reader-source-dom";
 
 /**
  * Reading Progress Utilities
@@ -157,11 +162,11 @@ function getReadingPositionWithViewport(
 ): ReadingPosition | null {
   const paragraphs = Array.from(
     container.querySelectorAll(PARAGRAPH_SELECTOR_STRING),
-  );
+  ).filter((node) => !isTranslationNode(node));
   if (paragraphs.length === 0) return null;
 
   // Calculate total length for percentage calculation
-  const totalLength = normalizeTextLength(container.textContent ?? "");
+  const totalLength = normalizeTextLength(getSourceText(container));
 
   // Check if scrolled to bottom - return 100% immediately
   if (scrollInfo) {
@@ -173,7 +178,7 @@ function getReadingPositionWithViewport(
       // Find the last paragraph for anchor text
       const lastParagraph = paragraphs[paragraphs.length - 1];
       const anchor = lastParagraph
-        ? normalizeText(lastParagraph.textContent ?? "").slice(
+        ? normalizeText(getSourceText(lastParagraph)).slice(
             0,
             ANCHOR_TEXT_MAX_LENGTH,
           )
@@ -188,7 +193,7 @@ function getReadingPositionWithViewport(
 
   for (const paragraph of paragraphs) {
     // An empty paragraph has no text to take an offset from
-    if (!paragraph.textContent?.trim()) {
+    if (!getSourceText(paragraph).trim()) {
       continue;
     }
     const rect = paragraph.getBoundingClientRect();
@@ -209,17 +214,13 @@ function getReadingPositionWithViewport(
   if (!topParagraph) return null;
 
   // Extract anchor text for position verification
-  const anchor = normalizeText(topParagraph.textContent ?? "").slice(
+  const anchor = normalizeText(getSourceText(topParagraph)).slice(
     0,
     ANCHOR_TEXT_MAX_LENGTH,
   );
 
   // Calculate the text offset of this paragraph using TreeWalker
-  const walker = document.createTreeWalker(
-    container,
-    NodeFilter.SHOW_TEXT,
-    null,
-  );
+  const walker = sourceTextWalker(container);
 
   let offset = 0;
   let node: Node | null;
@@ -256,13 +257,13 @@ export function scrollToReadingPosition(
   if (anchor) {
     const paragraphs = Array.from(
       container.querySelectorAll(PARAGRAPH_SELECTOR_STRING),
-    );
+    ).filter((node) => !isTranslationNode(node));
 
     let fuzzyMatch: Element | null = null;
     const anchorPrefix = anchor.slice(0, 20);
 
     for (const paragraph of paragraphs) {
-      const paragraphAnchor = normalizeText(paragraph.textContent ?? "").slice(
+      const paragraphAnchor = normalizeText(getSourceText(paragraph)).slice(
         0,
         ANCHOR_TEXT_MAX_LENGTH,
       );
@@ -290,11 +291,7 @@ export function scrollToReadingPosition(
   }
 
   // Strategy 2: Fall back to offset-based lookup
-  const walker = document.createTreeWalker(
-    container,
-    NodeFilter.SHOW_TEXT,
-    null,
-  );
+  const walker = sourceTextWalker(container);
 
   let currentOffset = 0;
   let node: Node | null;

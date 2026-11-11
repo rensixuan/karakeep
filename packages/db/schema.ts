@@ -124,6 +124,33 @@ export const users = sqliteTable("user", {
   inferredTagLang: text("inferredTagLang"),
 });
 
+// Provider credentials are never stored on the user object or exposed through
+// general user settings / exports. Only the translation service decrypts them.
+export const userTranslationSettings = sqliteTable("userTranslationSettings", {
+  userId: text("userId")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  model: text("model").notNull(),
+  ciphertext: text("ciphertext").notNull(),
+  nonce: text("nonce").notNull(),
+  authTag: text("authTag").notNull(),
+  encryptionVersion: integer("encryptionVersion").notNull(),
+});
+
+export const bookmarkTranslations = sqliteTable("bookmarkTranslations", {
+  bookmarkId: text("bookmarkId")
+    .primaryKey()
+    .references(() => bookmarks.id, { onDelete: "cascade" }),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  version: text("version").notNull(),
+  generation: integer("generation").notNull().default(0),
+  translations: text("translations", { mode: "json" })
+    .$type<Record<string, string>>()
+    .notNull(),
+});
+
 export const accounts = sqliteTable(
   "account",
   {

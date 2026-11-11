@@ -1776,5 +1776,43 @@
     "go_back": "Go back",
     "go_home": "Go home",
     "try_again": "Try again"
+  },
+  "reader_translation": {
+    "settings_title": "Reading translation",
+    "settings_description": "Translate saved articles into Simplified Chinese with your own OpenAI account. Keys are encrypted on the server. Connection tests and translations use your API credits.",
+    "model": "Model",
+    "save": "Save",
+    "test": "Test saved connection",
+    "delete_key": "Delete key",
+    "saved": "Translation settings saved.",
+    "connected": "Connection successful.",
+    "deleted": "API key deleted.",
+    "key_saved": "A key is saved — enter a replacement",
+    "key_placeholder": "Enter your OpenAI API key",
+    "key_saved_help": "Leave blank to keep the saved key. The saved key cannot be displayed.",
+    "key_help": "Your key is sent securely to this server and stored encrypted.",
+    "translate": "Translate to Chinese",
+    "pause": "Pause",
+    "continue": "Continue translation",
+    "hide": "Hide translation",
+    "show": "Show translation",
+    "restart": "Translate again",
+    "progress": "{{done}} / {{total}} segments",
+    "configure": "Configure translation",
+    "errors": {
+      "TRANSLATION_ENCRYPTION_UNAVAILABLE": "Translation is unavailable until the administrator configures the server encryption key.",
+      "TRANSLATION_KEY_UNREADABLE": "The saved key cannot be decrypted. Check the server encryption key or save your API key again.",
+      "TRANSLATION_HTTPS_REQUIRED": "Use HTTPS to save your API key.",
+      "TRANSLATION_KEY_REQUIRED": "Add your OpenAI API key in AI settings first.",
+      "TRANSLATION_INVALID_KEY": "The API key is invalid or lacks permission. Update it in AI settings.",
+      "TRANSLATION_RATE_LIMITED": "OpenAI rate limit or quota reached. Check your account and try again later.",
+      "TRANSLATION_MODEL_UNAVAILABLE": "The selected model is unavailable or does not support translation requests. Check AI settings.",
+      "TRANSLATION_TIMEOUT": "The translation timed out. Completed segments have been saved; you can retry.",
+      "TRANSLATION_REFUSED": "OpenAI could not translate this part of the article.",
+      "TRANSLATION_INCOMPLETE": "An incomplete translation was returned. Please retry this batch.",
+      "TRANSLATION_NO_CONTENT": "This article has no saved reader content to translate.",
+      "TRANSLATION_STALE": "The article or translation settings changed. Continue to load the current version.",
+      "TRANSLATION_FAILED": "Translation could not be completed. Your saved progress is kept; please try again."
+    }
   }
 }

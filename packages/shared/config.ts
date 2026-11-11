@@ -69,6 +69,7 @@ const allEnv = z.object({
   TURNSTILE_SITE_KEY: z.string().optional(),
   TURNSTILE_SECRET_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  TRANSLATION_ENCRYPTION_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().url().optional(),
   OPENAI_PROXY_URL: z.string().url().optional(),
   OPENAI_TIMEOUT_SEC: z.coerce.number().positive().optional(),
@@ -339,6 +340,7 @@ const serverConfigSchema = allEnv.transform((val, ctx) => {
     },
     apiUrl: val.API_URL,
     publicUrl: val.NEXTAUTH_URL,
+    translation: { encryptionKey: val.TRANSLATION_ENCRYPTION_KEY },
     publicApiUrl: `${val.NEXTAUTH_URL}/api`,
     signingSecret: () => {
       if (!val.NEXTAUTH_SECRET) {

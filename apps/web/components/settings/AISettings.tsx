@@ -70,6 +70,7 @@ import {
 } from "@/components/ui/empty";
 import { SaveBar } from "./SaveBar";
 import { SavedHint, useAutosavedSettings, useSavedField } from "./SavedHint";
+import TranslationSettings from "./TranslationSettings";
 import {
   SettingsPage,
   SettingsRow,
@@ -938,6 +939,7 @@ export default function AISettings() {
       title={t("settings.ai.ai_settings")}
       description={t("settings.ai.page_description")}
     >
+      <TranslationSettings />
       <AIPreferences />
       <TagStyleSelector />
       <CuratedTagsSelector />
