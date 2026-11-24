@@ -1,0 +1,92 @@
+name: Portable deployment image
+
+on:
+  push:
+    branches: [codex/customizations]
+  workflow_dispatch:
+
+concurrency:
+  group: portable-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            os: ubuntu-24.04
+          - arch: arm64
+            os: ubuntu-24.04-arm
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4.3.1
+        with:
+          persist-credentials: false
+      - name: Test deployment configuration
+        run: python3 -m unittest discover -s deploy -p 'test_*.py' -v
+      - uses: docker/setup-buildx-action@v3.12.0
+      - name: Build the custom application
+        uses: docker/build-push-action@v5.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: aio
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: karakeep-portable:test
+          build-args: SERVER_VERSION=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=portable-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=portable-${{ matrix.arch }}
+      - name: Test a fresh installation and repeat startup
+        run: |
+          python3 deploy/deploy.py --image karakeep-portable:test --url http://127.0.0.1:3000 --project-name portable-ci-${{ matrix.arch }}
+          python3 deploy/smoke_test.py
+      - uses: docker/login-action@v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the tested architecture
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          image="ghcr.io/${REPOSITORY,,}:sha-${REVISION}-${ARCH}"
+          docker tag karakeep-portable:test "$image"
+          docker push "$image"
+      - name: Remove disposable test containers and data
+        if: always()
+        run: |
+          if [ -f deploy/.env ]; then
+            docker compose --project-directory deploy --env-file deploy/.env -f deploy/compose.yaml down --volumes
+          fi
+
+  manifest:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: docker/setup-buildx-action@v3.12.0
+      - uses: docker/login-action@v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the multi-platform image
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+        run: |
+          image="ghcr.io/${REPOSITORY,,}"
+          docker buildx imagetools create \
+            --tag "${image}:sha-${REVISION}" --tag "${image}:custom" \
+            "${image}:sha-${REVISION}-amd64" "${image}:sha-${REVISION}-arm64"

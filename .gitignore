@@ -75,3 +75,6 @@ auth_failures.log
 .codex
 .claude/worktrees
 jean.json
+
+# Local one-off migration tools are intentionally not published with this fork.
+/apps/workers/scripts/migrateReadwise.*

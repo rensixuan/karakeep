@@ -1,0 +1,5 @@
+.env
+admin-credentials.json
+deployment-state.json
+__pycache__/
+backups/

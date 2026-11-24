@@ -14,6 +14,10 @@
 
 Karakeep (previously Hoarder) is a self-hostable bookmark-everything app with a touch of AI for the data hoarders out there.
 
+This fork includes Chinese Reader translation and a self-contained deployment setup:
+see [在新机器部署定制 Karakeep](deploy/README.md) for automatic secret generation,
+administrator initialization, HTTPS, and the custom Docker image build.
+
 ![homepage screenshot](https://github.com/karakeep-app/karakeep/blob/main/screenshots/homepage.png?raw=true)
 
 ## Features

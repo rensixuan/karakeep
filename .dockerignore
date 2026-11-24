@@ -33,3 +33,8 @@ out/
 .claude/worktrees
 .playwright-cli
 output
+
+# Host-only deployment files can contain generated credentials.
+deploy
+# One-off local migration tooling is not part of this deployable distribution.
+apps/workers/scripts/migrateReadwise.*

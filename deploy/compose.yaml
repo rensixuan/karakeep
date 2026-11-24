@@ -1,0 +1,100 @@
+name: ${COMPOSE_PROJECT_NAME:-karakeep}
+
+x-app: &app
+  image: ${KARAKEEP_IMAGE:-karakeep-custom:local}
+  env_file: .env
+  environment:
+    DATA_DIR: /data
+    MEILI_ADDR: http://meilisearch:7700
+    BROWSER_WEB_URL: http://chrome:9222
+  volumes:
+    - data:/data
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  web:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: aio
+    restart: unless-stopped
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    depends_on:
+      - meilisearch
+      - chrome
+    mem_limit: ${WEB_MEMORY_LIMIT:-1100m}
+    logging: *logging
+
+  bootstrap:
+    <<: *app
+    profiles: [tools]
+    network_mode: none
+    entrypoint: [node, /bootstrap/bootstrap.cjs]
+    volumes:
+      - data:/data
+      - ./bootstrap.cjs:/bootstrap/bootstrap.cjs:ro
+    secrets:
+      - admin_credentials
+
+  chrome:
+    image: ghcr.io/karakeep-app/karakeep-chrome:release@sha256:6c80ed470871bb8c129dc58692ca1714cddbc1392faad3ebf59aecd2e6e58eac
+    restart: unless-stopped
+    init: true
+    command:
+      - --disable-gpu
+      - --disable-dev-shm-usage
+      - --hide-scrollbars
+      - --disable-blink-features=AutomationControlled
+      - --window-size=1440,900
+    mem_limit: ${CHROME_MEMORY_LIMIT:-512m}
+    logging: *logging
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.41.0@sha256:860fa4baed04ae1c235de870edab0c8006227546dea1bbb6411fbfc5e27cf1db
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?Run deploy.py first}
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_ENV: production
+      MEILI_MAX_INDEXING_MEMORY: 256Mb
+      MEILI_MAX_INDEXING_THREADS: "1"
+    volumes:
+      - meilisearch:/meili_data
+    mem_limit: ${MEILI_MEMORY_LIMIT:-384m}
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
+    profiles: [https]
+    restart: unless-stopped
+    environment:
+      CADDY_SITE: ${CADDY_SITE:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+    mem_limit: 128m
+    logging: *logging
+
+secrets:
+  admin_credentials:
+    file: ./admin-credentials.json
+
+volumes:
+  data:
+  meilisearch:
+  caddy-data:
+  caddy-config:
